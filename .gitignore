@@ -1,0 +1,14 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+.env/
+venv/
+
+# Data and MLflow artifacts
+data/
+mlruns/
+
+# Jupyter
+.ipynb_checkpoints/
