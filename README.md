@@ -1,3 +1,4 @@
+```
 fleet-demand-forecaster/
 ├── data/                    
 │   ├── raw/                 # synthetic data script - initial files
@@ -23,3 +24,4 @@ fleet-demand-forecaster/
 ├── requirements.txt         # Root dependencies for the whole workspace (MLflow, etc.)
 ├── .gitignore               # Ensures data/ and sensitive files are kept out of GitHub
 └── README.md                # Setup instructions and architecture overview
+```
