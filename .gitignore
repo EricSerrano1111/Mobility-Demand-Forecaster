@@ -12,3 +12,6 @@ mlruns/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Model(s)
+models/
