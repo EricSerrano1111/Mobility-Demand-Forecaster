@@ -7,7 +7,7 @@ This project addresses that inefficiency by utilizing synthetically generated mo
 
 The dataset contains temporal features, vehicle classes (ex. Sedans, SUVs, Sprinters), and lagged demand metrics to accurately predict future fleet requirements. By providing a day-to-day forecast, logistics operators can transition from a reactive dispatch model to a proactive allocation strategy, maximizing both asset utilization and customer satisfaction.
 
-## Technical Architecture & Recruiter Highlights:
+## Technical Architecture & Highlights:
  Designed with a production-first mindset, this project goes beyond a standard local Jupyter Notebook by implementing a complete, enterprise-grade microservice architecture.
 * Algorithmic Pragmatism: Utilizes a lightweight, highly interpretable Scikit-Learn Linear Regression model, avoiding the trap of over-engineering with complex models when lean mathematical solutions suffice.
 * Decoupled Microservices: The prediction engine is wrapped in a stateless FastAPI server, completely separating backend logic from the frontend UI.
