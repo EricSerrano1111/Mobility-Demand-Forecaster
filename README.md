@@ -1,10 +1,51 @@
+# Enterprise Mobility Demand Forecaster
+
+## Overview
+The Mobility Demand Forecaster is an end-to-end machine learning solution designed to solve a critical dispatch optimization problem within the ride-hailing and livery sector. In the mobility industry, miscalculating daily fleet allocation carries heavy consequences. For example, under-allocating vehicles leads to increased customer wait times and lost revenue, while over-allocating results in idle drivers and bloated operational costs. 
+
+This project addresses that inefficiency by utilizing synthetically generated mobility dispatch data which was replicated by using real world business data. There are some similarities in trends but ultimately synthetic data was generated to take rigorous precautions ensuring data privacy and confidentiality. This submission strictly excludes potentially proprietary data.
+
+The dataset contains temporal features, vehicle classes (ex. Sedans, SUVs, Sprinters), and lagged demand metrics to accurately predict future fleet requirements. By providing a day-to-day forecast, logistics operators can transition from a reactive dispatch model to a proactive allocation strategy, maximizing both asset utilization and customer satisfaction.
+
+## Technical Architecture & Recruiter Highlights:
+ Designed with a production-first mindset, this project goes beyond a standard local Jupyter Notebook by implementing a complete, enterprise-grade microservice architecture.
+* Algorithmic Pragmatism: Utilizes a lightweight, highly interpretable Scikit-Learn Linear Regression model, avoiding the trap of over-engineering with complex models when lean mathematical solutions suffice.
+* Decoupled Microservices: The prediction engine is wrapped in a stateless FastAPI server, completely separating backend logic from the frontend UI.
+* Serverless Cloud Deployment: The API is containerized via Docker and deployed to Google Cloud Run, utilizing scale-to-zero cloud economics and public endpoint routing.
+* CI/CD Pipeline: Integrated with Google Cloud Build to trigger automated container rebuilds upon pushing code to GitHub.
+* Interactive Frontend: Features a modern, user-friendly Streamlit dashboard hosted independently on Streamlit Community Cloud for seamless end-user interaction.
+* Automated QA: Pipeline stability is guaranteed through automated endpoint integration testing using pytest.
+
+## Getting Started
+Dependencies:
+* Python 3.11+
+* Scikit-Learn (Linear Regression model)
+* Pandas 
+* NumPy
+* FastAPI
+* Uvicorn (ASGI server)
+* Pydantic (Data validation)
+* Streamlit
+* Requests (API communication)
+* Pytest (Automated endpoint testing)
+* Docker
+* Google Cloud Build (CI/CD Pipeline)
+* Google Cloud Artifact Registry
+* Google Cloud Run (Serverless compute)
+* Streamlit Community Cloud (Frontend hosting)
+
+## Repository Structure
+
 ```
-fleet-demand-forecaster/
+mobility-demand-forecaster/
 ├── data/                    
 │   ├── raw/                 # synthetic data script - initial files
 │   └── processed/           # Cleaned, engineered data ready for MLflow training runs
 ├── docs/                    
-│   └── FinalProject.pdf     # required assignment documentation
+│   └── README.pdf                 # Setup instructions and architecture overview as PDF
+│   └── System-Architecture.pdf    # High level components diagram
+│   └── training_environments.txt  # Complete list requirement variables
+│   └── Model-UI-Demo.mp4          # Demonstration Video
 ├── notebooks/               
 │   ├── 01_data_generation.ipynb   # Script to generate the synthetic schema
 │   ├── 02_eda.ipynb               # Proving the synthetic data distributions are valid
@@ -27,4 +68,218 @@ fleet-demand-forecaster/
 ├── .gitignore               # Ensures data/ and sensitive files are kept out of GitHub
 └── README.md                # Setup instructions and architecture overview
 ```
- 
+ ## Execution & Expected Results
+
+### Exploratory Data Analysis (EDA) & Business Insights 
+Before engineering the forecasting model, a comprehensive EDA was conducted to understand the underlying mechanics of fleet utilization, uncover corporate seasonality, and identify demand volatility. Due to the data being synthetically generated, this is particularly important to ensure the injected trends were captured but also general trends in the mobility sector.
+
+Daily Mobility Demand, Time-series plotting validated the successful capture of injected demand spikes, proving the data retains the signal needed to differentiate between standard baseline operations and high-volume events.
+
+![Time Series Plot](/images/img1.png)
+
+Trip Volume by Day of Week, visualizing daily aggregates confirmed strict corporate travel seasonality. Peak fleet demand concentrates early in the week, while weekend volume drops significantly.
+
+![Volume Plot](/images/img2.png)
+
+Operations Split (In-House vs. Affiliate), an analysis of fulfillment methods highlights the threshold where internal fleet capacity is exhausted, forcing volume out to affiliate networks. Accurate forecasting directly reduces this expensive affiliate spillover.
+
+Demand Type (Standard vs. Event), segmenting the dataset between standard operations and known events confirmed a massive volume multiplier effect. Standard days follow a tight, predictable variance, whereas event days shatter normal distribution bounds. 
+
+![Ops Split & Demand Type](/images/img3.png)
+
+Monthly Volume Trends, tracking the target variable chronologically verified macro-level growth and seasonal lulls, establishing the baseline trajectory the algorithm uses for its lagged features. 
+
+![Monthly Volume Trend](/images/img4.png)
+
+Overall Daily Volume Distribution, the target variable exhibits a heavy right-skewed distribution. The vast majority of days operate at a stable, baseline volume, accompanied by a long tail of rare but massive high-demand surge days. This skew dictates the need for a model that can react quickly to sudden requirements without over-predicting on baseline days.
+
+Daily Volume Variance by Vehicle Type, boxplot analysis reveals that standard corporate classes. Specifically, Sedans (SEDN) and SUVs, experience the highest interquartile variance and the largest number of outlier surge days. Niche vehicles (like MINIs and MCs) remain relatively stable, indicating that predictive efforts must heavily prioritize the Sedan and SUV asset classes to prevent shortages.
+
+
+![Daily Volume Dist & Variance](/images/img5.png)
+
+### Experiment Tracking & Model Selection 
+To ensure reproducible comparisons between model architectures MLflow was integrated to log all hyperparameters, data scaling methodologies, and performance metrics for every training run.
+
+During the preprocessing phase, the data pipeline was upgraded to utilize a RobustScaler. By leveraging the interquartile range, the scaler effectively handled the heavily skewed, sparse distribution of niche vehicle demands, significantly outperforming initial attempts that choked on symlog transformations.
+
+With a pipeline established, multiple models were evaluated to find the optimal balance between accuracy, inference speed, and compute cost.
+
+**XGBoost:** I initially tinkered with a gradient-boosting approach, adjusting learning rates and tree depths. While exceptionally powerful, the XGBoost model proved unnecessarily complex for the dataset's specific signal. It underperformed compared to the baseline model and the resulting serialized model object was significantly heavier.
+
+**Linear Regression (Winner):** The baseline Linear Regression model emerged as the superior architectural choice. It achieved higher validation metrics to the boosted trees and offered distinct production advantages.
+
+![mlflow metrics](/images/img6.png)
+
+In a serverless microservice architecture (Google Cloud Run), memory footprint and cold-start times equate directly to financial cost and user latency. The Linear Regression model was selected for the final deployment because of its better performance but also it is lean, exceptionally fast at inference, and highly interpretable for operations use. A pragmatic decision was made as it proves the complexity is a liability if it does not yield a proportional business value.
+
+### Manual Integration Testing (Swagger UI) 
+
+Because this microservice is built on FastAPI, it automatically generates a self-documenting Swagger UI. By appending /docs to the local or cloud URL, operators can manually test the endpoint's end-to-end inference capabilities.
+
+Receiving the clean 200 OK response with an integer prediction is a complete manual integration test. It proves that the feature engineering pipeline, the serialized model artifact, and the routing logic are perfectly synchronized.
+
+The server successfully:
+
+1. Consumed and validated the raw JSON via Pydantic strict typing.
+
+2. Engineered the necessary time-series lags.
+
+3. Verified the target date against the injected holiday/event calendar.
+
+4. Triggered the One-Hot Encoding for the vehicle_type.
+
+5. Calculated that operations will require exactly 12 Sedans to meet the forecasted demand for May 18th.
+
+
+![Swagger UI](/images/img7.png)
+![Swagger UI](/images/img8.png)
+![Swagger UI](/images/img9.png)
+
+
+### CI/CD Pipeline & Serverless Deployment 
+To transition this project from a local development to an enterprise-grade environment, a fully automated Continuous Integration and Continuous Deployment (CI/CD) pipeline was established. This bridges the gap between machine learning experimentation and reliable software engineering.
+
+### The Git Push Deployment Pipeline 
+The repository is wired directly to Google Cloud via an automated trigger. Any future updates whether retraining the model with new data, tweaking the feature engineering logic, or adding new routes to the FastAPI server require only a standard git push origin master command.
+
+Upon receiving the commit, the CI/CD pipeline executes the following sequence:
+
+1.	Detection: Google Cloud Build detects the code change on the master branch.
+
+2.	Containerization: The build server reads the Dockerfile, provisions a clean environment, installs the lean api/requirements.txt, and packages the serialized linear_model.pkl artifact.
+
+3.	Registry: The compiled, production-ready image is stored securely in the Google Cloud Artifact Registry.
+
+4.	Zero-Downtime Swap: Google Cloud Run routes incoming web traffic to the newly built container, gracefully spinning down the old version without dropping a single user request.
+
+### Infrastructure Configuration 
+Leveraging Google Cloud's streamlined serverless ecosystem, the CI/CD triggers and Artifact Registry storage were configured directly through the Cloud Run dashboard. The service is restricted to a tight 512 MiB memory footprint and utilizes scale-to-zero autoscaling, ensuring the infrastructure remains incredibly cost-effective (operating entirely within the free tier) while maintaining the ability to instantly boot up and handle concurrent prediction requests.
+
+
+![GCP](/images/img10.png)
+
+
+![GCP](/images/img11.png)
+
+
+![GCP](/images/img12.png)
+
+### Live Production Verification
+Once the CI/CD pipeline successfully deployed the container to Google Cloud Run, the mobility-api becomes accessible via a public .run.app endpoint. Because FastAPI automatically generates OpenAPI documentation, a live Swagger UI is instantly available by appending /docs to the production URL.
+
+This enables immediate, real-world inference testing to prove that the cloud architecture perfectly mirrors the local development environment.
+
+During the production test, a clean response validated that the model artifact was correctly containerized, the Google Cloud routing was properly configured, and the microservice is 100% functional and ready for frontend integration.
+
+### Automated Quality Assurance (Pytest)
+To ensure long-term stability and protect the production environment from regressions, an automated testing suite was implemented using pytest. The testing strategy focuses strictly on validating the REST API service. This provides the highest return on engineering investment by simultaneously verifying three critical system components in a single pass:
+1.	Data Validation: Ensures the API correctly parses, strictly types, and validates incoming JSON payloads using Pydantic.
+2.	Model Validation: Verifies the serialized machine learning artifact loads correctly, processes the feature engineering logic, and computes the prediction without errors.
+3.	Routing Validation: Confirms the FastAPI server successfully returns a clean HTTP 200 response with the correct output schema.
+
+![QA Testing](/images/img13.png)
+
+### Testing Philosophy: Manual vs. Automated 
+While all the testing methods simulate an end-user sending a JSON payload to the API, they serve distinctly different architectural purposes:
+
+* **Swagger UI (Manual Testing):** This serves as a point-in-time validation. It physically proves the system is operational at the exact moment of deployment. However, it relies on human memory and intervention, making it vulnerable to regressions if underlying data pipelines (ex. data_prep.py) are modified months later.
+
+ * **Pytest (Automated Testing):** This serves as the permanent safety net. By codifying the test as a script, it can be integrated directly into the Google Cloud Build CI/CD pipeline. Every future git push will automatically trigger these tests. If a code change inadvertently breaks the API's logic, the automated test will fail, and the CI/CD pipeline will physically block the code from deploying to production.
+
+In short: Manual testing proves the API works today whereas the automated pytest suite guarantees it stays working in the future.
+
+### Frontend Architecture & Deployment (Streamlit)
+To provide operations with an intuitive interface, a decoupled frontend web application was developed using Streamlit. By completely separating the user interface from the backend inference engine, the architecture remains modular, highly scalable, and secure.
+
+### Dependency Isolation 
+Because the frontend operates entirely independent of the backend, it does not require heavy machine learning libraries (like Scikit-Learn or Pandas). The frontend environment is isolated to a lean dashboard/requirements.txt containing only the packages necessary for UI rendering and HTTP routing:
+
+* streamlit
+* requests
+
+*(Note: The heavy data science dependencies used during exploratory model training have been preserved in docs/training_environment.txt for reproducibility).*
+
+**Live URL -** https://mobility-demand-forecaster-serrano.streamlit.app/
+
+![UI](/images/img14.png)
+
+### Observability & Operational Metrics
+Deploying the model is only the first step, maintaining high availability and fast inference speeds requires continuous monitoring. Google Cloud Run provides native observability natively integrated into the deployment, allowing for real-time tracking of system health and infrastructure costs without requiring external APM (Application Performance Monitoring) tools.
+
+### Key Telemetry Tracked:
+
+* Traffic & Health (Request Counts): Continuously monitors the ratio of successful HTTP 2xx responses against 4xx/5xx errors, ensuring the API is securely rejecting malformed payloads and processing valid dispatch requests.
+
+* Performance (Latency Breakdown): Tracks the 50th, 95th, and 99th percentile latencies. Because the API uses a scale-to-zero architecture, monitoring cold-start times versus warm-container execution times is critical to ensuring the Streamlit UI feels responsive to end-users.
+
+* Serverless Cost Management (Instance Count): The infrastructure is strictly capped at a maximum of 2 concurrent container instances. The dashboard visually confirms that the containers successfully spin up to handle traffic spikes and gracefully spin down to zero during idle periods, guaranteeing that compute costs are strictly tied to actual usage.
+
+### Data-Driven Infrastructure Decisions 
+Beyond standard health checks, this telemetry actively drives future architectural decisions:
+
+* Scaling Strategy: If the Container instance count consistently flatlines at the maximum limit of 2 during morning dispatch hours, it provides the empirical data necessary to safely increase the instance cap.
+
+* Provisioned Concurrency: If End-to-end request latency spikes during sudden corporate event surges due to cold starts, the metrics will justify transitioning from scale-to-zero to a minimum of 1 provisioned instance to guarantee sub-second predictions.
+
+* Model Optimization: Monitoring the User execution latency allows the engineering team to pinpoint exactly when the serialized machine learning model becomes too heavy, signaling the need to refactor the feature engineering pipeline or select a leaner algorithm.
+
+![GCP Metrics](/images/img15.png)
+
+## Help / Issue Log
+1.	Pytest: ModuleNotFoundError: No module named 'api'
+
+    **Symptom:** Running pytest tests/ directly results in an import error, failing to recognize the api directory.
+    
+    **Solution:** Ensure that an empty __init__.py file exists inside the api/ folder to declare it as a Python package. Additionally, execute the tests using the Python module flag to force correct pathing from the root directory:
+
+2.	 Streamlit Cloud: Deployment Crash / Memory Limit Exceeded
+
+        **Symptom:** Streamlit Community Cloud fails to build the app, hangs indefinitely, or throws an Out of Memory (OOM) error during the package installation phase.
+    
+        **Solution:** Streamlit is likely trying to install the heavy machine learning environment. Ensure that your root directory does not contain the massive 170+ line requirements.txt freeze file. That file should be archived as docs/training_environment.txt. The Streamlit deployment relies exclusively on the lightweight dashboard/requirements.txt containing only streamlit and requests.
+
+3.	Google Cloud Run: Deployment Pipeline Failures
+
+    **Symptom:** A git push fails to update the live cloud server.
+
+    **Solution:** Navigate to the Cloud Build dashboard in GCP to view the step-by-step build execution. The most common failure points are typos in the Dockerfile or missing dependencies in api/requirements.txt. Cloud Build logs will pinpoint the exact line where the containerization failed.
+
+## TODO
+While the current V1 microservice successfully handles baseline forecasting and event spikes, the following features are slated for future development to further optimize fleet utilization:
+
+**Live Weather API Integration:**
+
+Mobility demand is highly correlated with real-time weather conditions. Future iterations will integrate a live weather API to append precipitation and temperature forecasts to the incoming JSON payload, adding a critical external feature to the model.
+
+**Automated Model Retraining Pipeline:**
+
+Currently, the model artifact is static. The next major MLOps milestone is to implement a fully automated retraining pipeline, allowing the model to automatically ingest the previous week's dispatch logs, retrain, evaluate against the baseline, and deploy the new artifact without manual intervention.
+
+**Class-Specific Multi-Model Architecture:**
+
+Currently, a single global Linear Regression model handles all fleet vehicle classes. To capture the highly distinct volatility between standard vehicles (Sedans/SUVs) and larger assets (Sprinters/MCs). A future iteration will deploy a multi-model architecture. This approach will train, tune, and serialize a dedicated algorithm for each specific vehicle class, allowing for isolated hyperparameter optimization based on the unique demand distribution of that specific asset type.
+
+**Advanced Deep Learning Evaluation:**
+
+While Scikit-Learn Linear Regression is optimal for the current data volume and serverless footprint, scaling up to a larger dataset will warrant evaluating Deep Learning architectures to capture more complex, non-linear dispatch patterns.
+
+**API Authentication layer:**
+
+To prepare for commercial multi-tenant usage, an API key validation layer will be added to the FastAPI routing logic, restricting prediction access to authorized frontend clients and dispatch dashboards.
+
+## Authors
+* Lead Developer – **Eric Serrano**
+
+## Version History
+* 0.1 – Initial Release 
+
+## License
+The MIT License (MIT)
+Copyright (c) 2026 Eric Serrano
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

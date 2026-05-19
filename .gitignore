@@ -1,14 +1,33 @@
-# Python cache
+# Python cache & Testing
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
 
 # Virtual environments
 .env/
 venv/
+env/
+
+# Secrets and Local Configurations
+.env
+.streamlit/secrets.toml
 
 # Data and MLflow artifacts
 data/
 mlruns/
+*.csv
+*.parquet
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Media and Large Files (docs folder)
+*.pdf
+*.mp4
+
+# IDEs and Operating System clutter
+.vscode/
+.DS_Store
+Thumbs.db
