@@ -133,7 +133,9 @@ The server successfully:
 
 
 ![Swagger UI](/images/img7.png)
+
 ![Swagger UI](/images/img8.png)
+
 ![Swagger UI](/images/img9.png)
 
 
